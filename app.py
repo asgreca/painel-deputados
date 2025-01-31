@@ -10,12 +10,17 @@ import asyncio
 # 📌 Título do aplicativo no Streamlit
 st.title("🗣️ Análise Política - Discursos dos Deputados Federais")
 
+# 🔹 Inicializar session_state
+if "openai_api_key" not in st.session_state:
+    st.session_state.openai_api_key = ""
+if "selected_model" not in st.session_state:
+    st.session_state.selected_model = ""
+if "messages" not in st.session_state:
+    st.session_state.messages = []  # ✅ Corrigido
+
 # ================================================================
 # 🔹 1) ENTRADA DA API KEY COM BOTÃO DE CONFIRMAÇÃO
 # ================================================================
-if "openai_api_key" not in st.session_state:
-    st.session_state.openai_api_key = ""
-
 api_key = st.text_input(
     "🔑 Insira sua API Key da OpenAI:",
     type="password",
@@ -40,9 +45,6 @@ model_options = {
     "gpt-4o": "Modelo versátil e de alta inteligência.",
     "gpt-4o-mini": "Modelo menor, rápido e acessível, ideal para tarefas específicas.",
 }
-
-if "selected_model" not in st.session_state:
-    st.session_state.selected_model = ""
 
 selected_model = st.selectbox(
     "🧠 Escolha o modelo GPT:",
