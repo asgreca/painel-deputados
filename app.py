@@ -1,48 +1,11 @@
-import requests
-import streamlit as st
-
-CHROMA_API_URL = "https://chroma-production-6065.up.railway.app/api/v1/collections/40535baa-0a68-4862-9e4c-1963f4981795/query"
-
-# Testar conexão com o ChromaDB
-def testar_conexao_chroma():
-    st.write("🔍 Testando conexão com ChromaDB...")
-
-    # Payload de exemplo para teste
-    payload = {
-        "query_embeddings": [[0.1, 0.2, 0.3]],
-        "n_results": 5,
-        "include": ["documents", "metadatas", "distances"]
-    }
-
-    try:
-        response = requests.post(
-            CHROMA_API_URL,
-            json=payload,
-            headers={"Content-Type": "application/json"},
-            timeout=10  # Tempo limite de 10 segundos
-        )
-        if response.status_code == 200:
-            st.success(f"✅ Conexão bem-sucedida! Resposta: {response.json()}")
-        else:
-            st.error(f"❌ Erro na conexão: {response.status_code} - {response.text}")
-
-    except Exception as e:
-        st.error(f"❌ Erro ao se conectar com ChromaDB: {str(e)}")
-
-# Exibir o botão de teste na interface
-if st.button("Testar Conexão com ChromaDB"):
-    testar_conexao_chroma()
-
-
-
-
 import os
-import streamlit as st
 import requests
+import streamlit as st
 from langchain.embeddings import OpenAIEmbeddings
 from langchain.chat_models import ChatOpenAI
 from langchain.prompts import PromptTemplate
 from langchain.chains import LLMChain
+import asyncio
 
 # 📌 Título do aplicativo no Streamlit
 st.title("🗣️ Análise Política - Discursos dos Deputados Federais")
@@ -89,7 +52,6 @@ if not st.session_state.selected_model:
 # ================================================================
 # 📌 CONFIGURAÇÃO DO ENDPOINT ChromaDB
 # ================================================================
-# Usando o UUID da coleção: 40535baa-0a68-4862-9e4c-1963f4981795
 CHROMA_API_URL = "https://chroma-production-6065.up.railway.app/api/v1/collections/40535baa-0a68-4862-9e4c-1963f4981795/query"
 
 # ================================================================
@@ -99,7 +61,7 @@ if "embedder" not in st.session_state:
     try:
         st.session_state.embedder = OpenAIEmbeddings(
             openai_api_key=st.session_state.openai_api_key,
-            model="text-embedding-ada-002"  # Garante compatibilidade com seu index
+            model="text-embedding-ada-002"
         )
     except Exception as e:
         st.error(f"Erro ao criar embeddings: {str(e)}")
@@ -119,24 +81,21 @@ if "llm" not in st.session_state:
 # ================================================================
 # 🔎 Função para consultar o ChromaDB (via embeddings)
 # ================================================================
-def buscar_contexto(query_text):
+async def buscar_contexto(query_text):
     """
     Gera embedding do texto e faz POST no endpoint /query do ChromaDB,
     retornando documentos relevantes.
     """
     try:
-        # 1) Gera embedding do texto do usuário
-        embedding = st.session_state.embedder.embed_query(query_text)
+        # Gerar embedding usando OpenAI
+        embedding = await st.session_state.embedder.aembed_query(query_text)  # Assíncrono
 
-        # 2) Monta o payload compatível com a instância
-        # (a mesma estrutura que funcionou no script de teste)
         payload = {
             "query_embeddings": [embedding],
             "n_results": 5,
             "include": ["documents", "metadatas", "distances"]
         }
 
-        # 3) Envia a consulta
         response = requests.post(
             CHROMA_API_URL,
             json=payload,
@@ -145,22 +104,10 @@ def buscar_contexto(query_text):
 
         if response.status_code == 200:
             data = response.json()
-            # data: {
-            #   "documents": [ [...], ... ],
-            #   "metadatas": [ [...], ... ],
-            #   "distances": [ [...], ... ],
-            #   ...
-            # }
-
-            # Vamos pegar os documentos na primeira lista
             docs = data.get("documents", [[]])
             if not docs or not docs[0]:
-                return "Nenhum contexto relevante foi encontrado para sua consulta."
-
-            documentos = docs[0]  # primeira lista interna de documentos
-            # Retorna (concatenando, com limite de 5000 chars por doc)
-            return "\n\n".join(doc[:5000] for doc in documentos)  
-
+                return "Nenhum contexto relevante foi encontrado."
+            return "\n\n".join(doc[:5000] for doc in docs[0])
         else:
             return f"Erro ao buscar contexto: {response.status_code} - {response.text}"
 
@@ -176,7 +123,7 @@ def testar_conexao_chromadb():
     caso contrário, mostra erro. Retorna o 'contexto' ou erro.
     """
     st.info("Testando conexão com ChromaDB usando a query 'teste de conexão'...")
-    contexto_teste = buscar_contexto("teste de conexão")
+    contexto_teste = asyncio.run(buscar_contexto("teste de conexão"))
     
     if "Erro ao buscar contexto" in contexto_teste or "Erro ao se conectar" in contexto_teste:
         st.error("❌ Falha ao conectar ou buscar contexto.")
@@ -186,7 +133,6 @@ def testar_conexao_chromadb():
     
     return contexto_teste
 
-# Só roda o teste de conexão 1x, se quiser
 if "test_conexao_feito" not in st.session_state:
     st.session_state.test_conexao_feito = True
     resultado_teste = testar_conexao_chromadb()
@@ -225,17 +171,15 @@ for message in st.session_state.messages:
         st.markdown(message["content"])
 
 if user_input := st.chat_input("Digite sua pergunta:"):
-    # Armazena pergunta no histórico
     st.session_state.messages.append({"role": "user", "content": user_input})
     with st.chat_message("user"):
         st.markdown(user_input)
 
     # 🔍 Buscar contexto no ChromaDB
-    contexto = buscar_contexto(user_input)
+    contexto = asyncio.run(buscar_contexto(user_input))
 
     try:
-        response = chain.run(history="", context=contexto, question=user_input)
-        # Armazena resposta no histórico
+        response = asyncio.run(chain.arun(history="", context=contexto, question=user_input))
         st.session_state.messages.append({"role": "assistant", "content": response})
         st.chat_message("assistant").markdown(response)
     except Exception as e:
