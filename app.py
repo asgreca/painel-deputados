@@ -141,9 +141,7 @@ Você é um analista político especializado em analisar discursos de deputados 
 - Utilize uma estrutura lógica para apresentar os argumentos.  
 
 ### **🗂 Estrutura da Resposta**
-Para cada deputado analisado, siga o seguinte formato:  
-
-🔹 **{Nome do Deputado}**  
+🔹 **{deputado}**  
 - **📌 Comissão X:** Resuma o que ele disse, forneça **data e número da reunião**. Destaque:  
   - **Pontos importantes do discurso.**  
   - **Impacto social e político das declarações.**  
@@ -175,10 +173,12 @@ Para cada deputado analisado, siga o seguinte formato:
 
 🔹 **Resposta:**  
 """
+
 prompt = PromptTemplate(
-    input_variables=["history", "context", "question"],
+    input_variables=["history", "context", "question", "deputado"],  # ✅ Adicionando "deputado"
     template=prompt_text
 )
+
 
 chain = LLMChain(llm=st.session_state.llm, prompt=prompt)
 
