@@ -135,24 +135,24 @@ Você é um analista político especializado em analisar discursos de deputados 
 
 ⚠️ **Diretrizes para a análise:**  
 - **Evite respostas genéricas ou superficiais.**  
-- **Sempre indique a origem da informação**: mencione **nome do deputado, comissão, data e número da reunião**.  
+- **Sempre indique a origem da informação**: mencione **nome do deputado, comissão, data e número da reunião**, quando disponíveis.  
 - **Baseie-se em documentos e referências concretas.**  
 - A resposta deve ter **entre 3 e 7 parágrafos**, conforme necessário para uma análise aprofundada.  
 - Utilize uma estrutura lógica para apresentar os argumentos.  
 
 ### **🗂 Estrutura da Resposta**
-🔹 **{deputado}**  
-- **📌 Comissão X:** Resuma o que ele disse, forneça **data e número da reunião**. Destaque:  
+🔹 **{Nome do Deputado}** _(Se disponível)_  
+- **📌 Comissão X:** Resuma o que foi dito, forneça **data e número da reunião**. Destaque:  
   - **Pontos importantes do discurso.**  
   - **Impacto social e político das declarações.**  
   - **Possíveis embates ideológicos com outros parlamentares.**  
 
-- **📌 Comissão Y:** Resuma o que ele disse, forneça **data e número da reunião**. Destaque:  
+- **📌 Comissão Y:** Resuma o que foi dito, forneça **data e número da reunião**. Destaque:  
   - **Pontos importantes do discurso.**  
   - **Impacto social e político das declarações.**  
   - **Possíveis embates ideológicos com outros parlamentares.**  
 
-- **📌 Plenário:** Resuma o que ele disse, forneça **data e número da reunião**. Destaque:  
+- **📌 Plenário:** Resuma o que foi dito, forneça **data e número da reunião**. Destaque:  
   - **Pontos importantes do discurso.**  
   - **Impacto social e político das declarações.**  
   - **Possíveis embates ideológicos com outros parlamentares.**  
@@ -175,9 +175,10 @@ Você é um analista político especializado em analisar discursos de deputados 
 """
 
 prompt = PromptTemplate(
-    input_variables=["history", "context", "question", "deputado"],  # ✅ Adicionando "deputado"
+    input_variables=["history", "context", "question"],  # ✅ Removido "deputado"
     template=prompt_text
 )
+
 
 
 chain = LLMChain(llm=st.session_state.llm, prompt=prompt)
