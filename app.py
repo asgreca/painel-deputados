@@ -11,42 +11,54 @@ import asyncio
 st.title("🗣️ Análise Política - Discursos dos Deputados Federais")
 
 # ================================================================
-# 🔹 1) INICIALIZAR SESSION STATE (API KEY, Modelo, etc.)
+# 🔹 1) ENTRADA DA API KEY COM BOTÃO DE CONFIRMAÇÃO
 # ================================================================
 if "openai_api_key" not in st.session_state:
-    st.session_state.openai_api_key = None
-if "selected_model" not in st.session_state:
-    st.session_state.selected_model = None
-if "messages" not in st.session_state:
-    st.session_state.messages = []
+    st.session_state.openai_api_key = ""
 
-# 🔑 Entrada para a API Key da OpenAI
-if not st.session_state.openai_api_key:
-    st.session_state.openai_api_key = st.text_input(
-        "Insira sua API Key da OpenAI:",
-        type="password",
-        placeholder="Cole sua API Key aqui",
-    )
+api_key = st.text_input(
+    "🔑 Insira sua API Key da OpenAI:",
+    type="password",
+    placeholder="Cole sua API Key aqui",
+)
+
+if st.button("✅ Confirmar API Key"):
+    if api_key:
+        st.session_state.openai_api_key = api_key
+        st.success("API Key salva com sucesso!")
+    else:
+        st.error("Por favor, insira uma API Key válida.")
 
 if not st.session_state.openai_api_key:
-    st.warning("Por favor, insira sua API Key para continuar.")
+    st.warning("⚠️ API Key não definida. Por favor, insira sua chave para continuar.")
     st.stop()
 
-# 🔹 Lista de modelos disponíveis
+# ================================================================
+# 🔹 2) SELEÇÃO DO MODELO GPT COM BOTÃO DE CONFIRMAÇÃO
+# ================================================================
 model_options = {
     "gpt-4o": "Modelo versátil e de alta inteligência.",
     "gpt-4o-mini": "Modelo menor, rápido e acessível, ideal para tarefas específicas.",
 }
 
-if not st.session_state.selected_model:
-    st.session_state.selected_model = st.selectbox(
-        "Escolha o modelo GPT:",
-        options=[""] + list(model_options.keys()),
-        format_func=lambda x: f"{x} - {model_options.get(x, 'Selecione um modelo')}" if x else "Selecione um modelo",
-    )
+if "selected_model" not in st.session_state:
+    st.session_state.selected_model = ""
+
+selected_model = st.selectbox(
+    "🧠 Escolha o modelo GPT:",
+    options=[""] + list(model_options.keys()),
+    format_func=lambda x: f"{x} - {model_options.get(x, '')}" if x else "Selecione um modelo",
+)
+
+if st.button("✅ Confirmar Modelo"):
+    if selected_model:
+        st.session_state.selected_model = selected_model
+        st.success(f"Modelo **{selected_model}** selecionado com sucesso!")
+    else:
+        st.error("Por favor, selecione um modelo GPT válido.")
 
 if not st.session_state.selected_model:
-    st.warning("Por favor, escolha um modelo GPT para continuar.")
+    st.warning("⚠️ Nenhum modelo selecionado. Escolha um para continuar.")
     st.stop()
 
 # ================================================================
@@ -55,7 +67,7 @@ if not st.session_state.selected_model:
 CHROMA_API_URL = "https://chroma-production-6065.up.railway.app/api/v1/collections/40535baa-0a68-4862-9e4c-1963f4981795/query"
 
 # ================================================================
-# 🔹 2) CRIAR EMBEDDINGS E MODELO LLM
+# 🔹 3) CRIAR EMBEDDINGS E MODELO LLM
 # ================================================================
 if "embedder" not in st.session_state:
     try:
@@ -87,29 +99,19 @@ async def buscar_contexto(query_text):
     retornando documentos relevantes.
     """
     try:
-        # Gerar embedding usando OpenAI
-        st.write("🔍 Gerando embedding para a consulta...")
         embedding = await st.session_state.embedder.aembed_query(query_text)
-
-        # Preparar o payload
         payload = {
             "query_embeddings": [embedding],
             "n_results": 5,
-            "include": ["documents", "metadatas", "distances"]
+            "include": ["documents"]
         }
-        st.write("📤 Payload enviado ao ChromaDB:", payload)
 
-        # Fazer a requisição
         response = requests.post(
             CHROMA_API_URL,
             json=payload,
             headers={"Content-Type": "application/json"},
             timeout=10
         )
-
-        # Log da resposta
-        st.write("🔍 Status da resposta:", response.status_code)
-        st.write("📥 Conteúdo da resposta:", response.text)
 
         if response.status_code == 200:
             data = response.json()
@@ -121,34 +123,7 @@ async def buscar_contexto(query_text):
             return f"Erro ao buscar contexto: {response.status_code} - {response.text}"
 
     except Exception as e:
-        st.error(f"❌ Erro ao se conectar com ChromaDB: {str(e)}")
         return f"Erro ao se conectar com ChromaDB: {str(e)}"
-
-# ================================================================
-# 🔹 3) TESTAR CONEXÃO A PARTIR DE UMA PERGUNTA DE EXEMPLO
-# ================================================================
-def testar_conexao_chromadb():
-    """
-    Faz uma consulta de teste ao ChromaDB para verificar conectividade.
-    """
-    st.info("Testando conexão com ChromaDB usando a query 'teste de conexão'...")
-
-    try:
-        contexto_teste = asyncio.run(buscar_contexto("teste de conexão"))
-
-        if "Erro ao buscar contexto" in contexto_teste or "Erro ao se conectar" in contexto_teste:
-            st.error(f"❌ Falha ao conectar ou buscar contexto: {contexto_teste}")
-        else:
-            st.success("✅ Conexão OK! Resposta de teste obtida.")
-            st.write("**Resposta do ChromaDB:**")
-            st.write(contexto_teste)
-
-    except Exception as e:
-        st.error(f"❌ Erro inesperado ao testar conexão com ChromaDB: {str(e)}")
-
-if "test_conexao_feito" not in st.session_state:
-    st.session_state.test_conexao_feito = True
-    testar_conexao_chromadb()
 
 # ================================================================
 # 🔹 4) SETUP DO PROMPT E DA CADEIA LLM
@@ -177,11 +152,13 @@ chain = LLMChain(llm=st.session_state.llm, prompt=prompt)
 # ================================================================
 # 💬 5) EXIBIR HISTÓRICO & INTERAÇÃO NO CHAT
 # ================================================================
+MAX_HISTORICO = 5  # Número máximo de interações a serem armazenadas
+
 for message in st.session_state.messages:
     with st.chat_message(message["role"]):
         st.markdown(message["content"])
 
-if user_input := st.chat_input("Digite sua pergunta:"):
+if user_input := st.chat_input("💬 Digite sua pergunta:"):
     st.session_state.messages.append({"role": "user", "content": user_input})
     with st.chat_message("user"):
         st.markdown(user_input)
@@ -189,8 +166,17 @@ if user_input := st.chat_input("Digite sua pergunta:"):
     # 🔍 Buscar contexto no ChromaDB
     contexto = asyncio.run(buscar_contexto(user_input))
 
+    # Criar histórico formatado com até MAX_HISTORICO mensagens anteriores
+    historico_formatado = "\n\n".join(
+        [f"Usuário: {msg['content']}" if msg["role"] == "user" else f"Assistente: {msg['content']}" 
+        for msg in st.session_state.messages[-MAX_HISTORICO:]]
+    )
+
     try:
-        response = asyncio.run(chain.arun(history="", context=contexto, question=user_input))
+        # Passando o histórico real para o modelo
+        response = asyncio.run(chain.arun(history=historico_formatado, context=contexto, question=user_input))
+
+        # Armazena resposta no histórico
         st.session_state.messages.append({"role": "assistant", "content": response})
         st.chat_message("assistant").markdown(response)
     except Exception as e:
