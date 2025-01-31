@@ -88,19 +88,28 @@ async def buscar_contexto(query_text):
     """
     try:
         # Gerar embedding usando OpenAI
-        embedding = await st.session_state.embedder.aembed_query(query_text)  # Assíncrono
+        st.write("🔍 Gerando embedding para a consulta...")
+        embedding = await st.session_state.embedder.aembed_query(query_text)
 
+        # Preparar o payload
         payload = {
             "query_embeddings": [embedding],
             "n_results": 5,
             "include": ["documents", "metadatas", "distances"]
         }
+        st.write("📤 Payload enviado ao ChromaDB:", payload)
 
+        # Fazer a requisição
         response = requests.post(
             CHROMA_API_URL,
             json=payload,
-            headers={"Content-Type": "application/json"}
+            headers={"Content-Type": "application/json"},
+            timeout=10
         )
+
+        # Log da resposta
+        st.write("🔍 Status da resposta:", response.status_code)
+        st.write("📥 Conteúdo da resposta:", response.text)
 
         if response.status_code == 200:
             data = response.json()
@@ -112,6 +121,7 @@ async def buscar_contexto(query_text):
             return f"Erro ao buscar contexto: {response.status_code} - {response.text}"
 
     except Exception as e:
+        st.error(f"❌ Erro ao se conectar com ChromaDB: {str(e)}")
         return f"Erro ao se conectar com ChromaDB: {str(e)}"
 
 # ================================================================
@@ -119,25 +129,26 @@ async def buscar_contexto(query_text):
 # ================================================================
 def testar_conexao_chromadb():
     """
-    Faz uma consulta de teste. Se vier 200 OK, mostra 'conectado'; 
-    caso contrário, mostra erro. Retorna o 'contexto' ou erro.
+    Faz uma consulta de teste ao ChromaDB para verificar conectividade.
     """
     st.info("Testando conexão com ChromaDB usando a query 'teste de conexão'...")
-    contexto_teste = asyncio.run(buscar_contexto("teste de conexão"))
-    
-    if "Erro ao buscar contexto" in contexto_teste or "Erro ao se conectar" in contexto_teste:
-        st.error("❌ Falha ao conectar ou buscar contexto.")
-        st.stop()
-    else:
-        st.success("✅ Conexão OK! Resposta de teste obtida.")
-    
-    return contexto_teste
+
+    try:
+        contexto_teste = asyncio.run(buscar_contexto("teste de conexão"))
+
+        if "Erro ao buscar contexto" in contexto_teste or "Erro ao se conectar" in contexto_teste:
+            st.error(f"❌ Falha ao conectar ou buscar contexto: {contexto_teste}")
+        else:
+            st.success("✅ Conexão OK! Resposta de teste obtida.")
+            st.write("**Resposta do ChromaDB:**")
+            st.write(contexto_teste)
+
+    except Exception as e:
+        st.error(f"❌ Erro inesperado ao testar conexão com ChromaDB: {str(e)}")
 
 if "test_conexao_feito" not in st.session_state:
     st.session_state.test_conexao_feito = True
-    resultado_teste = testar_conexao_chromadb()
-    st.write("**Resultado do teste de conexão:**")
-    st.write(resultado_teste)
+    testar_conexao_chromadb()
 
 # ================================================================
 # 🔹 4) SETUP DO PROMPT E DA CADEIA LLM
