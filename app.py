@@ -1,3 +1,41 @@
+import requests
+import streamlit as st
+
+CHROMA_API_URL = "https://chroma-production-6065.up.railway.app/api/v1/collections/40535baa-0a68-4862-9e4c-1963f4981795/query"
+
+# Testar conexão com o ChromaDB
+def testar_conexao_chroma():
+    st.write("🔍 Testando conexão com ChromaDB...")
+
+    # Payload de exemplo para teste
+    payload = {
+        "query_embeddings": [[0.1, 0.2, 0.3]],
+        "n_results": 5,
+        "include": ["documents", "metadatas", "distances"]
+    }
+
+    try:
+        response = requests.post(
+            CHROMA_API_URL,
+            json=payload,
+            headers={"Content-Type": "application/json"},
+            timeout=10  # Tempo limite de 10 segundos
+        )
+        if response.status_code == 200:
+            st.success(f"✅ Conexão bem-sucedida! Resposta: {response.json()}")
+        else:
+            st.error(f"❌ Erro na conexão: {response.status_code} - {response.text}")
+
+    except Exception as e:
+        st.error(f"❌ Erro ao se conectar com ChromaDB: {str(e)}")
+
+# Exibir o botão de teste na interface
+if st.button("Testar Conexão com ChromaDB"):
+    testar_conexao_chroma()
+
+
+
+
 import os
 import streamlit as st
 import requests
