@@ -16,7 +16,7 @@ if "openai_api_key" not in st.session_state:
 if "selected_model" not in st.session_state:
     st.session_state.selected_model = ""
 if "messages" not in st.session_state:
-    st.session_state.messages = []  # ✅ Corrigido
+    st.session_state.messages = []
 
 # ================================================================
 # 🔹 1) ENTRADA DA API KEY COM BOTÃO DE CONFIRMAÇÃO
@@ -140,27 +140,6 @@ Você é um analista político especializado em analisar discursos de deputados 
 - A resposta deve ter **entre 3 e 7 parágrafos**, conforme necessário para uma análise aprofundada.  
 - Utilize uma estrutura lógica para apresentar os argumentos.  
 
-### **🗂 Estrutura da Resposta**
-🔹 **{Nome do Deputado}** _(Se disponível)_  
-- **📌 Comissão X:** Resuma o que foi dito, forneça **data e número da reunião**. Destaque:  
-  - **Pontos importantes do discurso.**  
-  - **Impacto social e político das declarações.**  
-  - **Possíveis embates ideológicos com outros parlamentares.**  
-
-- **📌 Comissão Y:** Resuma o que foi dito, forneça **data e número da reunião**. Destaque:  
-  - **Pontos importantes do discurso.**  
-  - **Impacto social e político das declarações.**  
-  - **Possíveis embates ideológicos com outros parlamentares.**  
-
-- **📌 Plenário:** Resuma o que foi dito, forneça **data e número da reunião**. Destaque:  
-  - **Pontos importantes do discurso.**  
-  - **Impacto social e político das declarações.**  
-  - **Possíveis embates ideológicos com outros parlamentares.**  
-
-📖 **Referências:**  
-- Sempre que possível, inclua **fontes e documentos relevantes** para embasar sua análise.  
-- Se houver registros legislativos, mencione **nomes de projetos de lei, pareceres, estudos técnicos, etc.**  
-
 ### **🔍 Informações para Análise**
 **Histórico:**  
 {history}  
@@ -178,8 +157,6 @@ prompt = PromptTemplate(
     input_variables=["history", "context", "question"],  # ✅ Removido "deputado"
     template=prompt_text
 )
-
-
 
 chain = LLMChain(llm=st.session_state.llm, prompt=prompt)
 
