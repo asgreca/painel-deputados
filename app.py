@@ -104,7 +104,7 @@ async def buscar_contexto(query_text):
         embedding = await st.session_state.embedder.aembed_query(query_text)
         payload = {
             "query_embeddings": [embedding],
-            "n_results": 5,
+            "n_results": 20,
             "include": ["documents"]
         }
 
@@ -120,7 +120,7 @@ async def buscar_contexto(query_text):
             docs = data.get("documents", [[]])
             if not docs or not docs[0]:
                 return "Nenhum contexto relevante foi encontrado."
-            return "\n\n".join(doc[:5000] for doc in docs[0])
+            return "\n\n".join(doc[:20000] for doc in docs[0])
         else:
             return f"Erro ao buscar contexto: {response.status_code} - {response.text}"
 
@@ -131,24 +131,55 @@ async def buscar_contexto(query_text):
 # 🔹 4) SETUP DO PROMPT E DA CADEIA LLM
 # ================================================================
 prompt_text = """
-Você é um analista político. Sua função é analisar os discursos exclusivamente dos deputados federais 
-e fornecer respostas detalhadas e objetivas com base no histórico e no contexto abaixo. Não fale frases genéricas e evasivas, sempre indique a origem da ideia, onde estava registrada como em qual comissão, data e número da reunião. A resposta a ser dada deve ter sempre pelo menos 3 parágrafos.
+Você é um analista político especializado em analisar discursos de deputados federais. Sua tarefa é fornecer análises detalhadas, embasadas e objetivas, utilizando as informações disponíveis no histórico e no contexto abaixo.  
 
-Histórico:
-{history}
+⚠️ **Diretrizes para a análise:**  
+- **Evite respostas genéricas ou superficiais.**  
+- **Sempre indique a origem da informação**: mencione **nome do deputado, comissão, data e número da reunião**.  
+- **Baseie-se em documentos e referências concretas.**  
+- A resposta deve ter **entre 3 e 7 parágrafos**, conforme necessário para uma análise aprofundada.  
+- Utilize uma estrutura lógica para apresentar os argumentos.  
 
-Contexto:
-{context}
+### **🗂 Estrutura da Resposta**
+Para cada deputado analisado, siga o seguinte formato:  
 
-Pergunta:
-{question}
+🔹 **{Nome do Deputado}**  
+- **📌 Comissão X:** Resuma o que ele disse, forneça **data e número da reunião**. Destaque:  
+  - **Pontos importantes do discurso.**  
+  - **Impacto social e político das declarações.**  
+  - **Possíveis embates ideológicos com outros parlamentares.**  
 
-Resposta:
+- **📌 Comissão Y:** Resuma o que ele disse, forneça **data e número da reunião**. Destaque:  
+  - **Pontos importantes do discurso.**  
+  - **Impacto social e político das declarações.**  
+  - **Possíveis embates ideológicos com outros parlamentares.**  
+
+- **📌 Plenário:** Resuma o que ele disse, forneça **data e número da reunião**. Destaque:  
+  - **Pontos importantes do discurso.**  
+  - **Impacto social e político das declarações.**  
+  - **Possíveis embates ideológicos com outros parlamentares.**  
+
+📖 **Referências:**  
+- Sempre que possível, inclua **fontes e documentos relevantes** para embasar sua análise.  
+- Se houver registros legislativos, mencione **nomes de projetos de lei, pareceres, estudos técnicos, etc.**  
+
+### **🔍 Informações para Análise**
+**Histórico:**  
+{history}  
+
+**Contexto:**  
+{context}  
+
+**Pergunta:**  
+{question}  
+
+🔹 **Resposta:**  
 """
 prompt = PromptTemplate(
     input_variables=["history", "context", "question"],
     template=prompt_text
 )
+
 chain = LLMChain(llm=st.session_state.llm, prompt=prompt)
 
 # ================================================================
